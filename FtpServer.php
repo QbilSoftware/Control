@@ -16,7 +16,6 @@ class FtpServer
 
     public function listFilesMatching($directory, $regex)
     {
-        return [];
         $files = @ftp_nlist($this->conn, $directory);
         if (!$files) {
             throw new \Exception('Kon lijst met bestanden niet ophalen.');
