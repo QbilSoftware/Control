@@ -1,0 +1,19 @@
+{
+    "name": "qbil/control",
+    "description": "Package to manage server and control panel of Qbil Trade",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "Qbil\\Control\\": ""
+        }
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Faizan Akram",
+            "email": "hello@faizanakram.me"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
