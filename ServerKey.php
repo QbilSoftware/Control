@@ -6,9 +6,9 @@ class ServerKey
 {
     private $key;
 
-    public function __construct()
+    public function __construct($keyfile)
     {
-        $keyfile = '/tmp/servercontrol.key';
+        $keyfile = $keyfile ?: '/tmp/servercontrol.key';
         if (!file_exists($keyfile) || filemtime($keyfile) < time() - 30000) {
             @unlink($keyfile);
             $this->key = openssl_pkey_new([

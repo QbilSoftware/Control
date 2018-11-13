@@ -69,17 +69,16 @@ class QtDatabase
         return true;
     }
 
-    public function loadDump($dumpFile, ServerKey $key)
+    public function loadDump($dumpFile, ServerKey $key, FtpServer $ftpServer)
     {
-        $ftp = new FtpServer('rpc.qbil.nl', 'qbil-bwdumps', 'ri5jDun1U-n');
         try {
             $dataFile = tempnam('/tmp', 'dump');
             $keyFile = tempnam('/tmp', 'key');
             $zipFile = tempnam('/tmp', 'zip');
-            if (!($ftp->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftp->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
+            if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
                 throw new Exception('Kon '.$dumpFile.'.aes niet downloaden.');
             }
-            if (!$ftp->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
+            if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
                 throw new Exception('Kon '.$dumpFile.'.key.'.$key->getKeyChecksum().' niet downloaden.');
             }
             $symmKey = $key->decrypt(file_get_contents($keyFile));
