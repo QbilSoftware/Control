@@ -73,7 +73,7 @@ class QtDatabase
         }
         $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
 
-        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username']."`@`".$hostResult['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
+        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username']."`@`".mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
         if (!$result) {
             throw new \Exception($conn->error);
         }
