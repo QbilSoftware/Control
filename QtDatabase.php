@@ -5,10 +5,12 @@ namespace Qbil\Control;
 class QtDatabase
 {
     private $config;
+    private $adminConfig;
 
-    public function __construct($config)
+    public function __construct($config, $adminConfig = null)
     {
         $this->config = $config;
+        $this->adminConfig = $adminConfig ?: ['username' => 'root', 'password' => 'null', 'hostspec' => 'localhost'];
     }
 
     public function isAccessible()
@@ -23,6 +25,18 @@ class QtDatabase
         }
 
         return true;
+    }
+
+    public function listDatabases()
+    {
+        $conn = $this->getAdminConnection();
+        $result = $conn->query('SHOW DATABASES');            
+        $databases = [];
+        while ($row = mysqli_fetch_assoc($result)) {
+            $databases[] = $row['Database'];
+        }
+
+        return $databases;
     }
 
     public function doesExist()
@@ -201,7 +215,7 @@ class QtDatabase
 
     private function getAdminConnection()
     {
-        $conn = @mysqli_connect('localhost', 'root');
+        $conn = @mysqli_connect($this->adminConfig['hostspec'], $this->adminConfig['username'], $this->adminConfig['password']);
         if (!$conn) {
             throw new \Exception('Root access to database unavailable.');
         }
