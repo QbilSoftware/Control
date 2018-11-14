@@ -71,7 +71,9 @@ class QtDatabase
         if (!preg_match('/-rw$/', $this->config['username'])) {
             throw new \Exception('Illegal username in database config');
         }
-        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username']."`@localhost identified by '".$conn->real_escape_string($this->config['password'])."'");
+        $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
+
+        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username']."`@`".$hostResult['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
         if (!$result) {
             throw new \Exception($conn->error);
         }
@@ -90,10 +92,10 @@ class QtDatabase
             $keyFile = tempnam('/tmp', 'key');
             $zipFile = tempnam('/tmp', 'zip');
             if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
-                throw new Exception('Kon '.$dumpFile.'.aes niet downloaden.');
+                throw new \Exception('Kon '.$dumpFile.'.aes niet downloaden.');
             }
             if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
-                throw new Exception('Kon '.$dumpFile.'.key.'.$key->getKeyChecksum().' niet downloaden.');
+                throw new \Exception('Kon '.$dumpFile.'.key.'.$key->getKeyChecksum().' niet downloaden.');
             }
             $symmKey = $key->decrypt(file_get_contents($keyFile));
 
@@ -106,19 +108,19 @@ class QtDatabase
                 $zipData = sodium_crypto_secretbox_open(file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $symmKey);
             }
             if (!$zipData) {
-                throw new Exception('Decryptie mislukt.');
+                throw new \Exception('Decryptie mislukt.');
             }
             file_put_contents($zipFile, $zipData);
 
-            $zip = new ZipArchive();
+            $zip = new \ZipArchive();
             if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
-                throw new Exception('Fout bij het lezen van het zip-bestand.');
+                throw new \Exception('Fout bij het lezen van het zip-bestand.');
             }
             if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
-                throw new Exception('Kon database niet verwijderen.');
+                throw new \Exception('Kon database niet verwijderen.');
             }
             if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
-                throw new Exception('Kon database niet aanmaken.');
+                throw new \Exception('Kon database niet aanmaken.');
             }
             $this->makeAccessible();
             $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
@@ -143,7 +145,7 @@ class QtDatabase
                         // Filter database name
                         $statement = preg_replace('/ALTER DATABASE `[a-z0-9_]+`/i', 'ALTER DATABASE', $statement);
                         if (!$conn->query($statement)) {
-                            throw new Exception($conn->error.' ('.$statement.')');
+                            throw new \Exception($conn->error.' ('.$statement.')');
                         }
                         $statement = '';
                     }

@@ -6,12 +6,13 @@ class FtpServer
 {
     private $conn;
 
-    public function __construct($host, $username, $password)
+    public function __construct($host, $username, $password, $passive = true)
     {
         $this->conn = ftp_connect($host, null, 3);
         if (!$this->conn || !ftp_login($this->conn, $username, $password)) {
             throw new \Exception('Could not login or connect to FTP');
         }
+        ftp_pasv($this->conn, $passive);
     }
 
     public function listFilesMatching($directory, $regex)
