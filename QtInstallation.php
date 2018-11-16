@@ -13,7 +13,7 @@ class QtInstallation
     public function __construct($path)
     {
         $this->name = basename($path);
-        $this->path = ($this->name === $path ? INSTALL_PATH : dirname($path)).PATH_SEPARATOR;
+        $this->path = ($this->name === $path ? INSTALL_PATH : dirname($path)).DIRECTORY_SEPARATOR;
     }
     
     protected function getHtdocsFolder()
