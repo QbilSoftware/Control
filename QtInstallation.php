@@ -2,14 +2,23 @@
 
 namespace Qbil\Control;
 
+use Symfony\Component\Process\PhpProcess;
+
 class QtInstallation
 {
-    private $name;
+    protected $name;
+    protected $path;
     private $configuration;
 
-    public function __construct($name)
+    public function __construct($path)
     {
-        $this->name = $name;
+        $this->name = basename($path);
+        $this->path = $this->name === $path ? INSTALL_PATH : dirname($path);
+    }
+    
+    protected function getHtdocsFolder()
+    {
+        return $this->path.$this->name.'/htdocs';
     }
 
     public function erase()
@@ -38,15 +47,15 @@ class QtInstallation
         return implode(PATH_SEPARATOR, $pathComponents);
     }
 
-    public function composerInstall()
+    public function composerInstall($dev = false, $scripts = true)
     {
-        chdir(INSTALL_PATH.$this->name.'/htdocs');
+        chdir($this->getHtdocsFolder());
         if (!file_exists('composer.json')) {
             chdir('symfony');
         }
-        exec('env HOME='.INSTALL_PATH.' PATH='.$this->getPath().' SYMFONY_ENV=prod composer install -o --no-dev 2>&1', $output, $retval);
+        exec('env HOME='.$this->getHtdocsFolder().' PATH='.$this->getPath().' SYMFONY_ENV=prod composer install '.($dev ? '' : '--no-dev ').($scripts ? '' : '--no-scripts ').' 2>&1', $output, $retval);
         if ($retval) {
-            throw new Exception(implode("\n", $output));
+            throw new \Exception(implode("\n", $output));
         }
 
         return true;
@@ -54,16 +63,16 @@ class QtInstallation
 
     public function cacheClear()
     {
-        $cacheFolders = array_filter([INSTALL_PATH.$this->name.'/htdocs/symfony/app/cache/', INSTALL_PATH.$this->name.'/htdocs/symfony/var/cache/'], 'is_dir');
+        $cacheFolders = array_filter([$this->getHtdocsFolder().'/symfony/app/cache/', $this->getHtdocsFolder().'/symfony/var/cache/'], 'is_dir');
         if (!count($cacheFolders)) {
-            throw new Exception('Cache super folder not found.');
+            throw new \Exception('Cache super folder not found.');
         }
         foreach ($cacheFolders as $cacheFolder) {
             if (is_dir($cacheFolder.'prod') && !delTree($cacheFolder.'prod')) {
-                throw new Exception('Could not clear cache.');
+                throw new \Exception('Could not clear cache.');
             }
             if (is_dir($cacheFolder.'dev') && !delTree($cacheFolder.'dev')) {
-                throw new Exception('Could not clear cache.');
+                throw new \Exception('Could not clear cache.');
             }
         }
 
@@ -72,20 +81,27 @@ class QtInstallation
 
     public function asseticDump()
     {
-        chdir(INSTALL_PATH.$this->name.'/htdocs/symfony');
+        chdir($this->getHtdocsFolder().'/symfony');
         exec('env PATH='.$this->getPath().' SYMFONY_ENV=prod php app/console assetic:dump 2>&1', $output, $retval);
         if ($retval) {
-            throw new Exception(implode("\n", $output));
+            throw new \Exception(implode("\n", $output));
         }
 
         return true;
     }
 
-    public function getDatabase()
+    public function getDatabase($adminConfig = null)
     {
         $dbConfig = $this->getDatabaseSettings();
 
-        return new QtDatabase($dbConfig);
+        return new QtDatabase($dbConfig, $adminConfig);
+    }
+    
+    public function getSitekey()
+    {
+        $this->parseConfiguration();
+        
+        return $this->configuration['license']['sitekey'];
     }
 
     public function getRemoteControlPid()
@@ -121,7 +137,7 @@ class QtInstallation
 
     public function startRemoteControl()
     {
-        chdir(INSTALL_PATH.$this->name.'/htdocs/utilities');
+        chdir($this->getHtdocsFolder().'/utilities');
         if (FREEBSD_SYSTEM) {
             @system('env PATH='.$this->getPath().' daemon -p ../../rc.pid /usr/local/bin/php RemoteControlService.php '.$this->name.' > /dev/null 2>&1');
         } else {
@@ -137,10 +153,17 @@ class QtInstallation
         if (null !== $this->configuration) {
             return;
         }
-        chdir(INSTALL_PATH.$this->name.'/htdocs/logic');
-        @include '../symfony/vendor/autoload.php';
-        include 'configuration.php';
-        $this->configuration = $configuration;
+        chdir($this->getHtdocsFolder().'/logic');
+        $process = new PhpProcess(<<<EOF
+<?php
+require('../symfony/vendor/autoload.php');
+require('configuration.php');
+echo(json_encode(\$configuration));
+EOF
+);
+        $process->run();
+
+        $this->configuration = json_decode($process->getOutput(), true);
         chdir(__DIR__);
     }
 

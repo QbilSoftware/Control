@@ -85,6 +85,20 @@ class QtDatabase
         return true;
     }
 
+    public function setQbilAccountPassword($password, $sitekey)
+    {
+        $conn = $this->getConnection();
+        
+        $conn->select_db($this->config['database']);
+
+        $result = $conn->query('UPDATE account SET wachtwoord=PASSWORD("'.mysqli_escape_string($conn, $password.$sitekey).'") WHERE user="qbil"');
+        if (!$result) {
+            throw new \Exception($conn->error);
+        }
+
+        return true;
+    }
+
     public function loadDump($dumpFile, ServerKey $key, FtpServer $ftpServer)
     {
         try {
