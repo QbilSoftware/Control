@@ -6,10 +6,10 @@ class ServerKey
 {
     private $key;
 
-    public function __construct($keyfile)
+    public function __construct($keyfile, $expireTime = 30000)
     {
         $keyfile = $keyfile ?: '/tmp/servercontrol.key';
-        if (!file_exists($keyfile) || filemtime($keyfile) < time() - 30000) {
+        if (!file_exists($keyfile) || (false !== $expireTime && filemtime($keyfile) < time() - 30000)) {
             @unlink($keyfile);
             $this->key = openssl_pkey_new([
                 'digest_alg' => 'sha512',

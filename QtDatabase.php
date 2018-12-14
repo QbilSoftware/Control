@@ -114,7 +114,7 @@ class QtDatabase
             $symmKey = $key->decrypt(file_get_contents($keyFile));
 
             if ('aes' === $extension) {
-                $iv = file_get_contents($dataFile, false, null, -1, 32);
+                $iv = file_get_contents($dataFile, false, null, 0, 32);
                 $td = mcrypt_module_open(MCRYPT_RIJNDAEL_256, '', MCRYPT_MODE_CBC, '');
                 mcrypt_generic_init($td, $symmKey, $iv);
                 $zipData = mdecrypt_generic($td, file_get_contents($dataFile, false, null, 32));
