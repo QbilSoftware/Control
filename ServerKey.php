@@ -6,7 +6,7 @@ class ServerKey
 {
     private $key;
 
-    public function __construct($keyfile, $expireTime = 30000)
+    public function __construct($keyfile = null, $expireTime = 30000)
     {
         $keyfile = $keyfile ?: '/tmp/servercontrol.key';
         if (!file_exists($keyfile) || (false !== $expireTime && filemtime($keyfile) < time() - 30000)) {
