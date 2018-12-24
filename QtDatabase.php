@@ -10,7 +10,7 @@ class QtDatabase
     public function __construct($config, $adminConfig = null)
     {
         $this->config = $config;
-        $this->adminConfig = $adminConfig ?: ['username' => 'root', 'password' => 'null', 'hostspec' => 'localhost'];
+        $this->adminConfig = $adminConfig ?: ['username' => 'root', 'password' => null, 'hostspec' => 'localhost'];
     }
 
     public function isAccessible()
