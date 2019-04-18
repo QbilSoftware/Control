@@ -4,7 +4,7 @@
     "type": "library",
     "autoload": {
         "psr-4": {
-            "Qbil\\Control\\": ""
+            "Qbil\\Control\\": "src"
         }
     },
     "license": "MIT",
@@ -14,6 +14,13 @@
             "email": "hello@faizanakram.me"
         }
     ],
-    "minimum-stability": "dev",
-    "require": {}
+    "minimum-stability": "beta",
+    "require": {
+        "ext-ftp": "*",
+        "ext-mysqli": "*",
+        "ext-posix": "*",
+        "phpseclib/mcrypt_compat": "^1.0",
+        "symfony/process": "^4.2",
+        "ckdarby/php-uptimerobot": "^0.2.0"
+    }
 }

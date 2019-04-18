@@ -30,7 +30,7 @@ class QtDatabase
     public function listDatabases()
     {
         $conn = $this->getAdminConnection();
-        $result = $conn->query('SHOW DATABASES');            
+        $result = $conn->query('SHOW DATABASES');
         $databases = [];
         while ($row = mysqli_fetch_assoc($result)) {
             $databases[] = $row['Database'];
@@ -43,7 +43,7 @@ class QtDatabase
     {
         try {
             $conn = $this->getAdminConnection();
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $conn = $this->getConnection();
             if (!$conn) {
                 return null;
@@ -56,10 +56,6 @@ class QtDatabase
     public function makeInaccessible()
     {
         $conn = $this->getAdminConnection();
-
-        if (!preg_match('/-rw$/', $this->config['username'])) {
-            throw new \Exception('Illegal username in database config');
-        }
         @$conn->query('DROP USER `'.$this->config['username'].'`@localhost');
         @$conn->query('DROP USER `'.$this->config['ro-username'].'`@`%`');
     }
@@ -67,17 +63,20 @@ class QtDatabase
     public function makeAccessible()
     {
         $conn = $this->getAdminConnection();
-
-        if (!preg_match('/-rw$/', $this->config['username'])) {
-            throw new \Exception('Illegal username in database config');
-        }
         $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
 
-        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username']."`@`".mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
+        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username'].'`@`'.mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
         if (!$result) {
             throw new \Exception($conn->error);
         }
-        $result = @$conn->query('GRANT SELECT,EXECUTE ON '.$this->config['database'].'.* TO `'.$this->config['ro-username']."`@`%` identified by '".$conn->real_escape_string($this->config['ro-password'].file_get_contents(APPEND_KEY_PATH))."' require ssl");
+
+        $password = $this->config['ro-password'];
+
+        if (defined('APPEND_KEY_PATH') && file_exists(APPEND_KEY_PATH)) {
+            $password .= file_get_contents(APPEND_KEY_PATH);
+        }
+
+        $result = @$conn->query('GRANT SELECT,EXECUTE ON '.$this->config['database'].'.* TO `'.$this->config['ro-username']."`@`%` identified by '".$conn->real_escape_string($password)."' require ssl");
         if (!$result) {
             throw new \Exception($conn->error);
         }
@@ -88,7 +87,7 @@ class QtDatabase
     public function setQbilAccountPassword($password, $sitekey)
     {
         $conn = $this->getConnection();
-        
+
         $conn->select_db($this->config['database']);
 
         $result = $conn->query('UPDATE account SET wachtwoord=PASSWORD("'.mysqli_escape_string($conn, $password.$sitekey).'") WHERE user="qbil"');
@@ -106,10 +105,10 @@ class QtDatabase
             $keyFile = tempnam('/tmp', 'key');
             $zipFile = tempnam('/tmp', 'zip');
             if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
-                throw new \Exception('Kon '.$dumpFile.'.aes niet downloaden.');
+                throw new \Exception('Could not download '.$dumpFile);
             }
             if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
-                throw new \Exception('Kon '.$dumpFile.'.key.'.$key->getKeyChecksum().' niet downloaden.');
+                throw new \Exception('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
             }
             $symmKey = $key->decrypt(file_get_contents($keyFile));
 
@@ -122,19 +121,19 @@ class QtDatabase
                 $zipData = sodium_crypto_secretbox_open(file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $symmKey);
             }
             if (!$zipData) {
-                throw new \Exception('Decryptie mislukt.');
+                throw new \Exception('Decryption failed.');
             }
             file_put_contents($zipFile, $zipData);
 
             $zip = new \ZipArchive();
             if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
-                throw new \Exception('Fout bij het lezen van het zip-bestand.');
+                throw new \Exception('Error reading the zip file.');
             }
             if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
-                throw new \Exception('Kon database niet verwijderen.');
+                throw new \Exception('Could not drop database.');
             }
             if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
-                throw new \Exception('Kon database niet aanmaken.');
+                throw new \Exception('Could not create database.');
             }
             $this->makeAccessible();
             $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
@@ -168,13 +167,13 @@ class QtDatabase
             fclose($stream);
 
             $conn->query('DROP TABLE IF EXISTS dbrevision;');
-        } catch (Exception $e) {
-            @unlink($aesFile);
+        } catch (\Exception $e) {
+            @unlink($dataFile);
             @unlink($keyFile);
             @unlink($zipFile);
             throw $e;
         }
-        @unlink($aesFile);
+        @unlink($dataFile);
         @unlink($keyFile);
         @unlink($zipFile);
     }
@@ -206,7 +205,7 @@ class QtDatabase
             $row = mysqli_fetch_row($result);
 
             return is_dir($row[0]) && is_dir($row[0].'/.snap');
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return null;
         }
     }
@@ -217,7 +216,7 @@ class QtDatabase
             $conn = $this->getAdminConnection();
 
             return $conn->server_info;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return 'unknown';
         }
     }

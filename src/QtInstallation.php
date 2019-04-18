@@ -3,22 +3,25 @@
 namespace Qbil\Control;
 
 use Symfony\Component\Process\PhpProcess;
+use UptimeRobot\API;
 
 class QtInstallation
 {
+    public static $installPath = '';
     protected $name;
     protected $path;
     private $configuration;
+    private $projectDir;
 
-    public function __construct($path)
+    public function __construct($path, $projectDir = null)
     {
+        if (defined('INSTALL_PATH')) {
+            self::$installPath = INSTALL_PATH;
+        }
+
         $this->name = basename($path);
-        $this->path = ($this->name === $path ? INSTALL_PATH : dirname($path)).DIRECTORY_SEPARATOR;
-    }
-    
-    protected function getHtdocsFolder()
-    {
-        return $this->path.$this->name.'/htdocs';
+        $this->path = ($this->name === $path ? self::$installPath : dirname($path)).DIRECTORY_SEPARATOR;
+        $this->projectDir = $projectDir ?: $this->getHtdocsFolder();
     }
 
     public function erase()
@@ -26,34 +29,26 @@ class QtInstallation
         if ($this->getDatabase()->doesExist()) {
             throw new \Exception('A database exists');
         }
-        if (is_dir(INSTALL_PATH.$this->name.'/storage') && count(glob(INSTALL_PATH.$this->name.'/storage'))) {
+        if (is_dir(self::$installPath.$this->name.'/storage') && count(glob(self::$installPath.$this->name.'/storage'))) {
             throw new \Exception('Contains stored files');
         }
         if (!preg_match('/^[a-z0-9\-]+$/i', $this->name)) {
             throw new \Exception('Illegal installation name');
         }
-        if (!delTree(INSTALL_PATH.$this->name)) {
+        if (!delTree(self::$installPath.$this->name)) {
             throw new \Exception('Could not delete folder');
         }
 
         return true;
     }
 
-    private function getPath()
-    {
-        $pathComponents = explode(PATH_SEPARATOR, $_SERVER['PATH'] ?: $_SERVER['Path']);
-        $pathComponents[] = '/usr/local/bin';
-
-        return implode(PATH_SEPARATOR, $pathComponents);
-    }
-
     public function composerInstall($dev = false, $scripts = true)
     {
-        chdir($this->getHtdocsFolder());
+        chdir($this->projectDir);
         if (!file_exists('composer.json')) {
             chdir('symfony');
         }
-        exec('env HOME='.$this->getHtdocsFolder().' PATH='.$this->getPath().' SYMFONY_ENV=prod composer install '.($dev ? '' : '--no-dev ').($scripts ? '' : '--no-scripts ').' 2>&1', $output, $retval);
+        exec('env HOME='.$this->projectDir.' PATH='.$this->getPath().' SYMFONY_ENV=prod composer install '.($dev ? '' : '--no-dev ').($scripts ? '' : '--no-scripts ').' 2>&1', $output, $retval);
         if ($retval) {
             throw new \Exception(implode("\n", $output));
         }
@@ -63,7 +58,7 @@ class QtInstallation
 
     public function cacheClear()
     {
-        $cacheFolders = array_filter([$this->getHtdocsFolder().'/symfony/app/cache/', $this->getHtdocsFolder().'/symfony/var/cache/'], 'is_dir');
+        $cacheFolders = array_filter([$this->projectDir.'/symfony/app/cache/', $this->projectDir.'/symfony/var/cache/'], 'is_dir');
         if (!count($cacheFolders)) {
             throw new \Exception('Cache super folder not found.');
         }
@@ -81,7 +76,7 @@ class QtInstallation
 
     public function asseticDump()
     {
-        chdir($this->getHtdocsFolder().'/symfony');
+        chdir($this->projectDir.'/symfony');
         exec('env PATH='.$this->getPath().' SYMFONY_ENV=prod php app/console assetic:dump 2>&1', $output, $retval);
         if ($retval) {
             throw new \Exception(implode("\n", $output));
@@ -96,17 +91,17 @@ class QtInstallation
 
         return new QtDatabase($dbConfig, $adminConfig);
     }
-    
+
     public function getSitekey()
     {
         $this->parseConfiguration();
-        
+
         return $this->configuration['license']['sitekey'];
     }
 
     public function getRemoteControlPid()
     {
-        if (!file_exists($pidFile = INSTALL_PATH.$this->name.'/rc.pid') || !($pid = file_get_contents($pidFile))) {
+        if (!file_exists($pidFile = $this->projectDir.'/rc.pid') || !($pid = file_get_contents($pidFile))) {
             return false;
         }
 
@@ -137,48 +132,22 @@ class QtInstallation
 
     public function startRemoteControl()
     {
-        chdir($this->getHtdocsFolder().'/utilities');
-        if (FREEBSD_SYSTEM) {
+        chdir($this->projectDir.'/utilities');
+        if (defined('FREEBSD_SYSTEM')) {
             @system('env PATH='.$this->getPath().' daemon -p ../../rc.pid /usr/local/bin/php RemoteControlService.php '.$this->name.' > /dev/null 2>&1');
         } else {
-            @system('env PATH='.$this->getPath().' nohup php RemoteControlService.php '.$this->name.' > /dev/null 2>&1 & echo -n $! > ../../rc.pid');
+            @system('env PATH='.$this->getPath().' nohup php RemoteControlService.php >> ../symfony/var/logs/rc.log 2>&1 & echo -n $! > ../rc.pid');
         }
         sleep(1);
 
         return $this->isRemoteControlActive();
     }
 
-    private function parseConfiguration()
-    {
-        if (null !== $this->configuration) {
-            return;
-        }
-        chdir($this->getHtdocsFolder().'/logic');
-        $process = new PhpProcess(<<<EOF
-<?php
-require('../symfony/vendor/autoload.php');
-require('configuration.php');
-echo(json_encode(\$configuration));
-EOF
-);
-        $process->run();
-
-        $this->configuration = json_decode($process->getOutput(), true);
-        chdir(__DIR__);
-    }
-
-    private function getDatabaseSettings()
+    public function getDatabaseSettings()
     {
         $this->parseConfiguration();
 
         return $this->configuration['database']['dsn'];
-    }
-
-    private function monitorCommand($url, $args = null)
-    {
-        $api = new API(['url' => 'https://api.uptimerobot.com', 'apiKey' => UPTIMEROBOTKEY]);
-
-        return $api->request($url, $args);
     }
 
     public function getMonitorDetails()
@@ -187,22 +156,22 @@ EOF
             return null;
         }
         try {
-            $results = $this->monitorCommand('/getMonitors', ['search' => $this->name, 'showMonitorAlertContacts' => false]);
-            //	      var_dump ($results);
-            if (!$results) {
+            if (!$results = $this->monitorCommand('/getMonitors', ['search' => $this->name, 'showMonitorAlertContacts' => false])) {
                 return null;
-            } elseif ('ok' != $results['stat']) {
+            }
+
+            if ('ok' != $results['stat']) {
                 return false;
-            } else {
-                foreach ($results['monitors']['monitor'] as $result) {
-                    if ($result['friendlyname'] == $this->name) {
-                        return $result;
-                    }
+            }
+
+            foreach ($results['monitors']['monitor'] as $result) {
+                if ($result['friendlyname'] == $this->name) {
+                    return $result;
                 }
             }
 
             return false;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return null;
         }
     }
@@ -214,7 +183,7 @@ EOF
             $results = $this->monitorCommand('/deleteMonitor', ['monitorID' => $monitor['id']]);
 
             return $results && 'ok' == $results['stat'];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
     }
@@ -222,20 +191,61 @@ EOF
     public function createMonitor()
     {
         try {
-            $results = $this->monitorCommand('/newMonitor',
-                [
-                    'monitorFriendlyName' => $this->name,
-                    'monitorURL' => 'https://'.$this->name.'.qbiltrade.com/ui/login.php',
-                    'monitorType' => 2,
-                    'monitorKeywordType' => 2,
-                    'monitorKeywordValue' => 'Password',
-                    'monitorAlertContacts' => '0175644_0_0-2286993_0_0-2375626_0_0-2375643_0_0',
-                ]
-            );
+            $results = $this->monitorCommand('/newMonitor', [
+                'monitorFriendlyName' => $this->name,
+                'monitorURL' => 'https://'.$this->name.'.qbiltrade.com/ui/login.php',
+                'monitorType' => 2,
+                'monitorKeywordType' => 2,
+                'monitorKeywordValue' => 'Password',
+                'monitorAlertContacts' => '0175644_0_0-2286993_0_0-2375626_0_0-2375643_0_0',
+            ]);
 
             return $results && 'ok' == $results['stat'];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return false;
         }
+    }
+
+    protected function getHtdocsFolder()
+    {
+        return $this->path.$this->name.'/htdocs';
+    }
+
+    private function getPath()
+    {
+        $pathComponents = explode(PATH_SEPARATOR, $_SERVER['PATH'] ?: $_SERVER['Path']);
+        $pathComponents[] = '/usr/local/bin';
+
+        return implode(PATH_SEPARATOR, $pathComponents);
+    }
+
+    private function parseConfiguration()
+    {
+        if (null !== $this->configuration) {
+            return;
+        }
+        chdir($this->projectDir.'/logic');
+        $process = new PhpProcess(<<<EOF
+<?php
+require('../symfony/vendor/autoload.php');
+require('configuration.php');
+echo(json_encode(\$configuration));
+EOF
+        );
+        $process->run();
+
+        $this->configuration = json_decode($process->getOutput(), true);
+        chdir(__DIR__);
+    }
+
+    private function monitorCommand($url, $args = null)
+    {
+        if (!$apiKey = getenv('UPTIMEROBOTKEY') ?: (defined('UPTIMEROBOTKEY') ? UPTIMEROBOTKEY : null)) {
+            return null;
+        }
+
+        $api = new API(['url' => 'https://api.uptimerobot.com', 'apiKey' => $apiKey]);
+
+        return $api->request($url, $args);
     }
 }
