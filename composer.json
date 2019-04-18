@@ -1,5 +1,5 @@
 {
-    "name": "qbil/control",
+    "name": "qbil-software/control",
     "description": "Package to manage server and control panel of Qbil Trade",
     "type": "library",
     "autoload": {
