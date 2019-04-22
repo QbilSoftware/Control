@@ -60,15 +60,9 @@ class QtDatabase
         @$conn->query('DROP USER `'.$this->config['ro-username'].'`@`%`');
     }
 
-    public function makeAccessible()
+    public function setReadOnlyAccount()
     {
         $conn = $this->getAdminConnection();
-        $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
-
-        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username'].'`@`'.mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
-        if (!$result) {
-            throw new \Exception($conn->error);
-        }
 
         $password = $this->config['ro-password'];
 
@@ -82,6 +76,19 @@ class QtDatabase
         }
 
         return true;
+    }
+
+    public function makeAccessible()
+    {
+        $conn = $this->getAdminConnection();
+        $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
+
+        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username'].'`@`'.mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
+        if (!$result) {
+            throw new \Exception($conn->error);
+        }
+
+       return $this->setReadOnlyAccount();
     }
 
     public function setQbilAccountPassword($password, $sitekey)
