@@ -142,7 +142,11 @@ class QtDatabase
             if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
                 throw new \Exception('Could not create database.');
             }
-            $this->makeAccessible();
+            try {
+                $this->makeAccessible();
+            } catch (\Exception $exception) {
+                // Fail silently
+            }
             $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
             $conn->select_db($this->config['database']);
 
