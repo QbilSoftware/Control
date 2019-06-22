@@ -101,7 +101,7 @@ class QtInstallation
 
     public function getRemoteControlPid()
     {
-        if (getenv('AWS')) {
+        if (getenv('INSTALLATION_NAME')) {
             return file_get_contents('/var/storage/'.$this->name.'/rc.pid');
         }
 
@@ -139,7 +139,7 @@ class QtInstallation
         chdir($this->projectDir.'/utilities');
         if (defined('FREEBSD_SYSTEM')) {
             @system('env PATH='.$this->getPath().' daemon -p ../../rc.pid /usr/local/bin/php RemoteControlService.php '.$this->name.' > /dev/null 2>&1');
-        } elseif(getenv('AWS')) {
+        } elseif(getenv('INSTALLATION_NAME')) {
             @system('env PATH='.$this->getPath().' nohup php RemoteControlService.php >> ../var/logs/rc.log 2>&1 & echo -n $! > /var/storage/'.$this->name.'/rc.pid');
         } else {
             @system('env PATH='.$this->getPath().' nohup php RemoteControlService.php '.$this->name.' > /dev/null 2>&1 & echo -n $! > ../../rc.pid');
