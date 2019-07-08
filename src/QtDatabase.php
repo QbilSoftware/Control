@@ -91,20 +91,6 @@ class QtDatabase
        return $this->setReadOnlyAccount();
     }
 
-    public function setQbilAccountPassword($password, $sitekey)
-    {
-        $conn = $this->getConnection();
-
-        $conn->select_db($this->config['database']);
-
-        $result = $conn->query('UPDATE account SET wachtwoord=PASSWORD("'.mysqli_escape_string($conn, $password.$sitekey).'") WHERE user="qbil"');
-        if (!$result) {
-            throw new \Exception($conn->error);
-        }
-
-        return true;
-    }
-
     public function loadDump($dumpFile, ServerKey $key, FtpServer $ftpServer)
     {
         try {
@@ -178,6 +164,23 @@ class QtDatabase
             fclose($stream);
 
             $conn->query('DROP TABLE IF EXISTS dbrevision;');
+            $conn->query('CREATE TABLE dbrevision (branch TEXT, revision varchar(255), masked tinyint not null default 0);');
+            $regex = "/^(test_|masked_|)[a-zA-Z0-9\-]+_[0-9]+\-[0-9]+(_([[:alnum:]\$\-]+)|)(_([a-f0-9v\.]+)|)$/";
+
+            if (preg_match($regex, $dumpFile, $matches)) {
+                list(, $isMasked, , $branch, , $matchedRevision) = $matches;
+
+                $revision = preg_match('/[0-9v\.]+/', $matchedRevision) ? $matchedRevision : 'latest';
+
+                $stmt = $conn->prepare('INSERT INTO dbrevision values(?, ?, ?)');
+                $stmt->bind_param(
+                    'ssi',
+                    str_replace('$', '/', $branch),
+                    $revision,
+                    'masked_' === $isMasked ? 1 : 0
+                );
+                $stmt->execute();
+            }
         } catch (\Exception $e) {
             @unlink($dataFile);
             @unlink($keyFile);
