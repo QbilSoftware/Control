@@ -168,16 +168,17 @@ class QtDatabase
             $regex = "/^(test_|masked_|)[a-zA-Z0-9\-]+_[0-9]+\-[0-9]+(_([[:alnum:]\$\-]+)|)(_([a-f0-9v\.]+)|)$/";
 
             if (preg_match($regex, $dumpFile, $matches)) {
-                list(, $isMasked, , $branch, , $matchedRevision) = $matches;
-
+                list(, $masked, , $matchedBranch, , $matchedRevision) = $matches;
+                $branch = str_replace('$', '/', $matchedBranch);
                 $revision = preg_match('/[0-9v\.]+/', $matchedRevision) ? $matchedRevision : 'latest';
+                $isMasked = 'masked_' === $masked ? 1 : 0;
 
                 $stmt = $conn->prepare('INSERT INTO dbrevision values(?, ?, ?)');
                 $stmt->bind_param(
                     'ssi',
-                    str_replace('$', '/', $branch),
+                    $branch,
                     $revision,
-                    'masked_' === $isMasked ? 1 : 0
+                    $isMasked
                 );
                 $stmt->execute();
             }

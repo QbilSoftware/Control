@@ -233,7 +233,7 @@ class QtInstallation
         chdir($this->projectDir.'/logic');
         $process = new PhpProcess(<<<EOF
 <?php
-require('../symfony/vendor/autoload.php');
+require('../vendor/autoload.php');
 require('configuration.php');
 echo(json_encode(\$configuration));
 EOF
