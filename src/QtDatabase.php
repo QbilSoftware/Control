@@ -80,6 +80,10 @@ class QtDatabase
 
     public function makeAccessible()
     {
+        if ($this->adminConfig['username'] === $this->config['username']) {
+            return true;
+        }
+
         $conn = $this->getAdminConnection();
         $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
 
