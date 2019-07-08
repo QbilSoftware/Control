@@ -88,7 +88,7 @@ class QtDatabase
             throw new \Exception($conn->error);
         }
 
-       return $this->setReadOnlyAccount();
+        return $this->setReadOnlyAccount();
     }
 
     public function loadDump($dumpFile, ServerKey $key, FtpServer $ftpServer)
