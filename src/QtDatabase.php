@@ -101,13 +101,24 @@ class QtDatabase
             $dataFile = tempnam('/tmp', 'dump');
             $keyFile = tempnam('/tmp', 'key');
             $zipFile = tempnam('/tmp', 'zip');
+
+            $this->writeLn('Downloading dump file');
+
             if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
                 throw new \Exception('Could not download '.$dumpFile);
             }
+
+            $this->writeLn('Downloading key file');
+
             if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
                 throw new \Exception('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
             }
+
+            $this->writeLn('Decrypting key file');
+
             $symmKey = $key->decrypt(file_get_contents($keyFile));
+
+            $this->writeLn('Decrypting dump file');
 
             if ('aes' === $extension) {
                 $iv = file_get_contents($dataFile, false, null, 0, 32);
@@ -120,12 +131,18 @@ class QtDatabase
             if (!$zipData) {
                 throw new \Exception('Decryption failed.');
             }
+
+            $this->writeLn('Writing zip file');
             file_put_contents($zipFile, $zipData);
+
+            $this->writeLn('Extracting zip file');
 
             $zip = new \ZipArchive();
             if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
                 throw new \Exception('Error reading the zip file.');
             }
+
+            $this->writeLn('Dropping and re-creating database');
             if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
                 throw new \Exception('Could not drop database.');
             }
@@ -143,6 +160,7 @@ class QtDatabase
             $statement = '';
             $delimiter = ';';
 
+            $this->writeLn('Importing dump');
             while (!feof($stream)) {
                 $line = trim(fgets($stream), "\t\n\r\0");
                 if ('--' != substr($line, 0, 2)) {
@@ -186,6 +204,8 @@ class QtDatabase
                 );
                 $stmt->execute();
             }
+
+            $this->writeLn('<close>Done</close>');
         } catch (\Exception $e) {
             @unlink($dataFile);
             @unlink($keyFile);
@@ -255,5 +275,14 @@ class QtDatabase
         }
 
         return $conn;
+    }
+
+    private function writeLn($message)
+    {
+        if ('cli' !== php_sapi_name()) {
+            return;
+        }
+
+        echo "<info>{$message}</info>";
     }
 }
