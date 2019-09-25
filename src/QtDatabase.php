@@ -164,7 +164,7 @@ class QtDatabase
             while (!feof($stream)) {
                 $line = trim(fgets($stream), "\t\n\r\0");
                 if ('--' != substr($line, 0, 2)) {
-                    if ('' != $statement && ' ' != substr($statement, -1) && ' ' != $line[0]) {
+                    if ('' != $statement && ' ' != substr($statement, -1) && $line && ' ' != $line[0]) {
                         $statement .= ' ';
                     }
                     $statement .= $line;
