@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2eb284e55fd87e7c95dfa138c2282e4a",
+    "content-hash": "d760ce23dd9a2eb916a36b886d02be55",
     "packages": [
         {
             "name": "ckdarby/php-uptimerobot",
@@ -191,7 +191,7 @@
         },
         {
             "name": "symfony/process",
-            "version": "v4.3.6",
+            "version": "v4.3.8",
             "source": {
                 "type": "git",
                 "url": "https://github.com/symfony/process.git",
@@ -241,14 +241,15 @@
     ],
     "packages-dev": [],
     "aliases": [],
-    "minimum-stability": "beta",
+    "minimum-stability": "stable",
     "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "ext-ftp": "*",
         "ext-mysqli": "*",
-        "ext-posix": "*"
+        "ext-posix": "*",
+        "ext-sodium": "*"
     },
     "platform-dev": []
 }

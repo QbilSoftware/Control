@@ -53,11 +53,11 @@ class QtDatabase
         return $conn->select_db($this->config['database']);
     }
 
-    public function makeInaccessible()
+    public function makeInaccessible(string $host = '%')
     {
         $conn = $this->getAdminConnection();
-        @$conn->query('DROP USER `'.$this->config['username'].'`@localhost');
-        @$conn->query('DROP USER `'.$this->config['ro-username'].'`@`%`');
+        @$conn->query("DROP USER `{$this->config['username']}`@`{$host}`");
+        @$conn->query("DROP USER `{$this->config['ro-username']}`@`%`");
     }
 
     public function setReadOnlyAccount()
@@ -70,7 +70,7 @@ class QtDatabase
             $password .= file_get_contents(APPEND_KEY_PATH);
         }
 
-        $result = @$conn->query('GRANT SELECT,EXECUTE ON '.$this->config['database'].'.* TO `'.$this->config['ro-username']."`@`%` identified by '".$conn->real_escape_string($password)."' require ssl");
+        $result = @$conn->query("GRANT SELECT,EXECUTE ON {$this->config['database']}.* TO `{$this->config['ro-username']}`@`%` identified by '{$conn->real_escape_string($password)}' require ssl");
         if (!$result) {
             throw new \Exception($conn->error);
         }
@@ -78,16 +78,38 @@ class QtDatabase
         return true;
     }
 
-    public function makeAccessible()
+    public function makeAccessible(string $host = '%')
     {
         if ($this->adminConfig['username'] === $this->config['username']) {
             return true;
         }
 
         $conn = $this->getAdminConnection();
-        $hostResult = $conn->query("SELECT SUBSTRING_INDEX(USER(), '@', -1) AS host");
 
-        $result = @$conn->query('GRANT ALL ON '.$this->config['database'].'.* TO `'.$this->config['username'].'`@`'.mysqli_fetch_assoc($hostResult)['host']."` identified by '".$conn->real_escape_string($this->config['password'])."'");
+        $result = @$conn->query(
+            "GRANT select,
+                   insert, 
+                   update,
+                   delete, 
+                   create, 
+                   drop, 
+                   references, 
+                   index, 
+                   alter, 
+                   create temporary tables, 
+                   lock tables, 
+                   execute, 
+                   create view, 
+                   show view, 
+                   create routine, 
+                   alter routine, 
+                   event, 
+                   trigger 
+               ON {$this->config['database']}.* 
+               TO `{$this->config['username']}`@`{$host}` 
+               identified by '{$conn->real_escape_string($this->config['password'])}'"
+        );
+
         if (!$result) {
             throw new \Exception($conn->error);
         }
@@ -219,9 +241,9 @@ class QtDatabase
 
     public function killProcess($id)
     {
-        echo 'KILL '.$id;
+        echo "KILL {$id}";
         $conn = $this->getAdminConnection();
-        $conn->query('KILL '.$id);
+        $conn->query("KILL {$id}");
     }
 
     public function getProcessList()
