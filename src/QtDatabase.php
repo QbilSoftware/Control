@@ -13,14 +13,17 @@ class QtDatabase
         $this->adminConfig = $adminConfig ?: ['username' => 'root', 'password' => null, 'hostspec' => 'localhost'];
     }
 
-    public static function fromDatabaseUrl(string $databaseUrl, ?string $databaseRoUrl)
+    /**
+     * @throws \RuntimeException
+     */
+    public static function fromDatabaseUrl(string $databaseUrl, ?string $databaseRoUrl): self
     {
         [
             'host' => $host,
             'user' => $user,
             'pass' => $pass,
             'path' => $path,
-        ] = parse_url($databaseUrl);
+        ] = self::parseUrl($databaseUrl);
 
         $adminConfig = [
             'username' => $user,
@@ -35,7 +38,7 @@ class QtDatabase
                 'host' => $host,
                 'user' => $user,
                 'pass' => $pass,
-            ] = parse_url($databaseRoUrl);
+            ] = self::parseUrl($databaseRoUrl);
         }
 
         $dsn += [
@@ -340,5 +343,17 @@ class QtDatabase
         }
 
         echo "<info>{$message}</info>";
+    }
+
+    /**
+     * @throws \RuntimeException
+     */
+    private static function parseUrl(string $url)
+    {
+        if (false === $parsedUrl = parse_url($url)) {
+            throw new \RuntimeException('Malformatted database url');
+        }
+
+        return $parsedUrl;
     }
 }
