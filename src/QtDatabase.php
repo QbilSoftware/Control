@@ -13,6 +13,40 @@ class QtDatabase
         $this->adminConfig = $adminConfig ?: ['username' => 'root', 'password' => null, 'hostspec' => 'localhost'];
     }
 
+    public static function fromDatabaseUrl(string $databaseUrl, ?string $databaseRoUrl)
+    {
+        [
+            'host' => $host,
+            'user' => $user,
+            'pass' => $pass,
+            'path' => $path,
+        ] = parse_url($databaseUrl);
+
+        $adminConfig = [
+            'username' => $user,
+            'password' => $pass,
+            'hostspec' => $host,
+        ];
+
+        $dsn = $adminConfig + ['database' => ltrim($path, '/')];
+
+        if (null !== $databaseRoUrl) {
+            [
+                'host' => $host,
+                'user' => $user,
+                'pass' => $pass,
+            ] = parse_url($databaseRoUrl);
+        }
+
+        $dsn += [
+            'ro-username' => $user,
+            'ro-password' => $pass,
+            'ro-hostspec' => $host,
+        ];
+
+        return new self($dsn, $adminConfig);
+    }
+
     public function isAccessible()
     {
         $conn = $this->getConnection();
