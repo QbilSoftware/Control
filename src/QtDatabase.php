@@ -215,6 +215,7 @@ class QtDatabase
             }
             $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
             $conn->select_db($this->config['database']);
+            @$conn->query('set sql_mode=NO_ENGINE_SUBSTITUTION,innodb_strict_mode=0');
 
             $statement = '';
             $delimiter = ';';
