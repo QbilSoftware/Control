@@ -18,15 +18,12 @@ class QtDatabase
      */
     public static function fromDatabaseUrl(string $databaseUrl, ?string $databaseRoUrl): self
     {
-        $parsedUrl = self::parseUrl($databaseUrl);
-
         [
             'host' => $host,
             'user' => $user,
+            'pass' => $pass,
             'path' => $path,
-        ] = $parsedUrl;
-
-        $pass = array_key_exists('pass', $parsedUrl) ? $parsedUrl['pass'] : '';
+        ] = self::parseUrl($databaseUrl) + ['pass' => ''];
 
         $adminConfig = [
             'username' => $user,
@@ -37,14 +34,11 @@ class QtDatabase
         $dsn = $adminConfig + ['database' => ltrim($path, '/')];
 
         if (null !== $databaseRoUrl) {
-            $parsedUrl = self::parseUrl($databaseUrl);
-
             [
                 'host' => $host,
                 'user' => $user,
-            ] = self::parseUrl($databaseRoUrl);
-
-            $pass = array_key_exists('pass', $parsedUrl) ? $parsedUrl['pass'] : '';
+                'pass' => $pass,
+            ] = self::parseUrl($databaseRoUrl) + ['pass' => ''];
         }
 
         $dsn += [
