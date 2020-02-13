@@ -23,7 +23,7 @@ class QtDatabase
             'user' => $user,
             'pass' => $pass,
             'path' => $path,
-        ] = self::parseUrl($databaseUrl);
+        ] = self::parseUrl($databaseUrl) + ['pass' => ''];
 
         $adminConfig = [
             'username' => $user,
@@ -38,7 +38,7 @@ class QtDatabase
                 'host' => $host,
                 'user' => $user,
                 'pass' => $pass,
-            ] = self::parseUrl($databaseRoUrl);
+            ] = self::parseUrl($databaseRoUrl) + ['pass' => ''];
         }
 
         $dsn += [
