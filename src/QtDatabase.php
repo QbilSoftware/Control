@@ -163,11 +163,8 @@ class QtDatabase
 
             $this->writeLn('Downloading dump file');
 
-            if (
-                !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box') &&
-                !($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes')
-            ) {
-                throw new \Exception('Could not download '.$dumpFile.'.'.$extension);
+            if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
+                throw new \Exception('Could not download '.$dumpFile);
             }
 
             $this->writeLn('Downloading key file');
@@ -200,13 +197,9 @@ class QtDatabase
             $this->writeLn('Extracting zip file');
 
             $zip = new \ZipArchive();
-
-            if (true !== $zip->open($zipFile)) {
+            if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
                 throw new \Exception('Error reading the zip file.');
             }
-
-            $zip->extractTo('/tmp');
-            $zip->close();
 
             $this->writeLn('Dropping and re-creating database');
             if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
@@ -220,7 +213,7 @@ class QtDatabase
             } catch (\Exception $exception) {
                 // Fail silently
             }
-            $conn = $this->getAdminConnection();
+            $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
             $conn->select_db($this->config['database']);
             @$conn->query('set sql_mode=NO_ENGINE_SUBSTITUTION,innodb_strict_mode=0');
 
@@ -228,10 +221,29 @@ class QtDatabase
             $delimiter = ';';
 
             $this->writeLn('Importing dump');
-
-            if (!$conn->multi_query(file_get_contents($sqlFile = "/tmp/{$dumpFile}.sql"))) {
-                throw new \Exception('Database import failed');
+            while (!feof($stream)) {
+                $line = trim(fgets($stream), "\t\n\r\0");
+                if ('--' != substr($line, 0, 2)) {
+                    if ('' != $statement && ' ' != substr($statement, -1) && $line && ' ' != $line[0]) {
+                        $statement .= ' ';
+                    }
+                    $statement .= $line;
+                    if (preg_match("'^DELIMITER (.+)$'", $statement, $matches)) {
+                        $delimiter = $matches[1];
+                        $statement = '';
+                    } elseif (preg_match('/'.str_replace(';', '\;', $delimiter).'$/', $statement)) {
+                        // Filter definer information
+                        $statement = preg_replace('/ DEFINER=`[^`]+`@`[^`]+`/', '', $statement);
+                        // Filter database name
+                        $statement = preg_replace('/ALTER DATABASE `[a-z0-9_]+`/i', 'ALTER DATABASE', $statement);
+                        if (!$conn->query($statement)) {
+                            throw new \Exception($conn->error.' ('.$statement.')');
+                        }
+                        $statement = '';
+                    }
+                }
             }
+            fclose($stream);
 
             $conn->query('DROP TABLE IF EXISTS dbrevision;');
             $conn->query('CREATE TABLE dbrevision (branch TEXT, revision varchar(255), masked tinyint not null default 0);');
@@ -258,13 +270,11 @@ class QtDatabase
             @unlink($dataFile);
             @unlink($keyFile);
             @unlink($zipFile);
-            @unlink($sqlFile);
             throw $e;
         }
         @unlink($dataFile);
         @unlink($keyFile);
         @unlink($zipFile);
-        @unlink($sqlFile);
     }
 
     public function killProcess($id)
