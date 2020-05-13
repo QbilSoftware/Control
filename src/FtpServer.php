@@ -89,4 +89,14 @@ class FtpServer
     {
         ftp_close($this->conn);
     }
+
+
+    public function uploadFile(string $localPath, string $remotePath): bool
+    {
+        $this->connect();
+        $result = @ftp_put($this->conn, $remotePath, $localPath, FTP_BINARY);
+        $this->close();
+
+        return $result;
+    }
 }
