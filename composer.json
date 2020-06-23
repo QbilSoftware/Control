@@ -20,6 +20,7 @@
         "ext-mysqli": "*",
         "ext-posix": "*",
         "ext-sodium": "*",
+        "ext-zlib": "*",
         "phpseclib/mcrypt_compat": "^1.0",
         "symfony/process": "^4.3",
         "ckdarby/php-uptimerobot": "^0.2.0"

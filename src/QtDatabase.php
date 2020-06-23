@@ -6,6 +6,8 @@ class QtDatabase
 {
     private $config;
     private $adminConfig;
+    private $statement;
+    private $delimiter;
 
     public function __construct($config, $adminConfig = null)
     {
@@ -196,9 +198,14 @@ class QtDatabase
 
             $this->writeLn('Extracting zip file');
 
+            $isGzipped = false;
             $zip = new \ZipArchive();
             if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
-                throw new \Exception('Error reading the zip file.');
+                if (false === $stream = \gzopen($zipFile, 'rb')) {
+                    throw new \Exception('Error reading the compressed sql file.');
+                }
+
+                $isGzipped = true;
             }
 
             $this->writeLn('Dropping and re-creating database');
@@ -217,33 +224,16 @@ class QtDatabase
             $conn->select_db($this->config['database']);
             @$conn->query('set sql_mode=NO_ENGINE_SUBSTITUTION,innodb_strict_mode=0');
 
-            $statement = '';
-            $delimiter = ';';
-
             $this->writeLn('Importing dump');
-            while (!feof($stream)) {
-                $line = trim(fgets($stream), "\t\n\r\0");
-                if ('--' != substr($line, 0, 2)) {
-                    if ('' != $statement && ' ' != substr($statement, -1) && $line && ' ' != $line[0]) {
-                        $statement .= ' ';
-                    }
-                    $statement .= $line;
-                    if (preg_match("'^DELIMITER (.+)$'", $statement, $matches)) {
-                        $delimiter = $matches[1];
-                        $statement = '';
-                    } elseif (preg_match('/'.str_replace(';', '\;', $delimiter).'$/', $statement)) {
-                        // Filter definer information
-                        $statement = preg_replace('/ DEFINER=`[^`]+`@`[^`]+`/', '', $statement);
-                        // Filter database name
-                        $statement = preg_replace('/ALTER DATABASE `[a-z0-9_]+`/i', 'ALTER DATABASE', $statement);
-                        if (!$conn->query($statement)) {
-                            throw new \Exception($conn->error.' ('.$statement.')');
-                        }
-                        $statement = '';
-                    }
-                }
+
+            $this->statement = '';
+            $this->delimiter = ';';
+
+            if ($isGzipped) {
+                $this->tryGzipDecompression($stream, $conn);
+            } else {
+                $this->tryZipDecompression($stream, $conn);
             }
-            fclose($stream);
 
             $conn->query('DROP TABLE IF EXISTS dbrevision;');
             $conn->query('CREATE TABLE dbrevision (branch TEXT, revision varchar(255), masked tinyint not null default 0);');
@@ -356,5 +346,49 @@ class QtDatabase
         }
 
         return $parsedUrl;
+    }
+
+    private function tryGzipDecompression($stream, \mysqli $conn)
+    {
+        while (!\gzeof($stream)) {
+            if (!$rawLine = \gzgets($stream)) {
+                continue;
+            }
+            $this->processSqlLine(\trim($rawLine, "\t\n\r\0"), $conn);
+        }
+        \gzclose($stream);
+    }
+
+    private function tryZipDecompression($stream, \mysqli $conn)
+    {
+        while (!feof($stream)) {
+            $this->processSqlLine(trim(fgets($stream), "\t\n\r\0"), $conn);
+        }
+        fclose($stream);
+    }
+
+    private function processSqlLine(string $line, \mysqli $conn)
+    {
+        if (0 !== \strpos($line, '--')) {
+            if ($line && ' ' !== $line[0] && '' !== $this->statement && ' ' !== \substr($this->statement, -1)) {
+                $this->statement .= ' ';
+            }
+            $this->statement .= $line;
+            if (\preg_match("'^DELIMITER (.+)$'", $this->statement, $matches)) {
+                $this->delimiter = $matches[1];
+                $this->statement = '';
+            } elseif (\preg_match('/'.\str_replace(';', '\;', $this->delimiter).'$/', $this->statement)) {
+                // Filter definer information
+                $this->statement = \preg_replace('/ DEFINER=`[^`]+`@`[^`]+`/', '', $this->statement);
+                // Filter database name
+                $this->statement = \preg_replace('/ALTER DATABASE `[a-z0-9_]+`/i', 'ALTER DATABASE', $this->statement);
+
+                if (!$conn->query($this->statement)) {
+                    throw new \Exception($conn->error.' ('.$this->statement.')');
+                }
+
+                $this->statement = '';
+            }
+        }
     }
 }
