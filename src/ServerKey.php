@@ -2,24 +2,27 @@
 
 namespace Qbil\Control;
 
+use Exception;
+
 class ServerKey
 {
     private $key;
 
-    public function __construct($keyfile = null, $expireTime = 30000)
+    public function __construct(?string $keyFile = null, int $expireTime = 30000)
     {
-        $keyfile = $keyfile ?: '/tmp/servercontrol.key';
-        if (!file_exists($keyfile) || (false !== $expireTime && filemtime($keyfile) < time() - 30000)) {
-            @unlink($keyfile);
+        $keyFile ??= '/tmp/servercontrol.key';
+
+        if (!is_file($keyFile) || (0 !== $expireTime && filemtime($keyFile) < time() - 30000)) {
+            @unlink($keyFile);
             $this->key = openssl_pkey_new([
                 'digest_alg' => 'sha512',
-                'private_key_bits' => 2048,
+                'private_key_bits' => 4096,
                 'private_key_type' => OPENSSL_KEYTYPE_RSA,
             ]);
 
-            openssl_pkey_export_to_file($this->key, $keyfile);
+            openssl_pkey_export_to_file($this->key, $keyFile);
         } else {
-            $this->key = openssl_pkey_get_private(file_get_contents($keyfile));
+            $this->key = openssl_pkey_get_private(file_get_contents($keyFile));
         }
     }
 
@@ -37,8 +40,11 @@ class ServerKey
 
     public function decrypt($input)
     {
-        if (!openssl_private_decrypt($input, $output, $this->key)) {
-            throw new Exception('Decryptie mislukt.');
+        if (
+            !openssl_private_decrypt($input, $output, $this->key, \OPENSSL_PKCS1_OAEP_PADDING) &&
+            !openssl_private_decrypt($input, $output, $this->key)
+        ) {
+            throw new Exception('Decryption failed.');
         }
 
         return $output;

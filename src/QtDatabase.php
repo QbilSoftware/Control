@@ -165,7 +165,7 @@ class QtDatabase
 
             $this->writeLn('Downloading dump file');
 
-            if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.aes') && $extension = 'aes') && !($ftpServer->downloadFile($dataFile, $dumpFile.'.box') && $extension = 'box')) {
+            if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.box'))) {
                 throw new \Exception('Could not download '.$dumpFile);
             }
 
@@ -180,15 +180,8 @@ class QtDatabase
             $symmKey = $key->decrypt(file_get_contents($keyFile));
 
             $this->writeLn('Decrypting dump file');
+            $zipData = sodium_crypto_secretbox_open(file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $symmKey);
 
-            if ('aes' === $extension) {
-                $iv = file_get_contents($dataFile, false, null, 0, 32);
-                $td = mcrypt_module_open(MCRYPT_RIJNDAEL_256, '', MCRYPT_MODE_CBC, '');
-                mcrypt_generic_init($td, $symmKey, $iv);
-                $zipData = mdecrypt_generic($td, file_get_contents($dataFile, false, null, 32));
-            } else {
-                $zipData = sodium_crypto_secretbox_open(file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $symmKey);
-            }
             if (!$zipData) {
                 throw new \Exception('Decryption failed.');
             }
@@ -200,7 +193,7 @@ class QtDatabase
 
             $isGzipped = false;
             $zip = new \ZipArchive();
-            if (!$zip->open($zipFile) || !($stat = @$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
+            if (!$zip->open($zipFile) || !(@$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
                 if (false === $stream = \gzopen($zipFile, 'rb')) {
                     throw new \Exception('Error reading the compressed sql file.');
                 }
