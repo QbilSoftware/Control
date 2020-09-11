@@ -159,94 +159,21 @@ class QtDatabase
     public function loadDump($dumpFile, ServerKey $key, FtpServer $ftpServer)
     {
         try {
-            $dataFile = tempnam('/tmp', 'dump');
-            $keyFile = tempnam('/tmp', 'key');
-            $zipFile = tempnam('/tmp', 'zip');
+            $dataFile = $this->downloadDump($ftpServer, $dumpFile);
 
-            $this->writeLn('Downloading dump file');
+            $keyFile = $this->downloadKeyFile($ftpServer, $key, $dumpFile);
 
-            if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.box'))) {
-                throw new \Exception('Could not download '.$dumpFile);
-            }
+            $symmetricKey = $this->decryptKeyFile($key, $keyFile);
 
-            $this->writeLn('Downloading key file');
+            $zipFile = $this->decryptDumpFile($dataFile, $symmetricKey);
 
-            if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
-                throw new \Exception('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
-            }
+            $sqlFile = $this->extractDumpFromArchive($zipFile);
 
-            $this->writeLn('Decrypting key file');
+            $this->createDatabase();
 
-            $symmKey = $key->decrypt(file_get_contents($keyFile));
+            $this->importDatabase($sqlFile);
 
-            $this->writeLn('Decrypting dump file');
-            $zipData = sodium_crypto_secretbox_open(file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES), $symmKey);
-
-            if (!$zipData) {
-                throw new \Exception('Decryption failed.');
-            }
-
-            $this->writeLn('Writing zip file');
-            file_put_contents($zipFile, $zipData);
-
-            $this->writeLn('Extracting zip file');
-
-            $isGzipped = false;
-            $zip = new \ZipArchive();
-            if (!$zip->open($zipFile) || !(@$zip->statIndex(0)) || !($stream = @$zip->getStream($zip->getNameIndex(0)))) {
-                if (false === $stream = \gzopen($zipFile, 'rb')) {
-                    throw new \Exception('Error reading the compressed sql file.');
-                }
-
-                $isGzipped = true;
-            }
-
-            $this->writeLn('Dropping and re-creating database');
-            if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
-                throw new \Exception('Could not drop database.');
-            }
-            if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
-                throw new \Exception('Could not create database.');
-            }
-            try {
-                $this->makeAccessible();
-            } catch (\Exception $exception) {
-                // Fail silently
-            }
-            $conn = @mysqli_connect($this->config['hostspec'], $this->config['username'], $this->config['password']);
-            $conn->select_db($this->config['database']);
-            @$conn->query('set sql_mode=NO_ENGINE_SUBSTITUTION,innodb_strict_mode=0');
-
-            $this->writeLn('Importing dump');
-
-            $this->statement = '';
-            $this->delimiter = ';';
-
-            if ($isGzipped) {
-                $this->tryGzipDecompression($stream, $conn);
-            } else {
-                $this->tryZipDecompression($stream, $conn);
-            }
-
-            $conn->query('DROP TABLE IF EXISTS dbrevision;');
-            $conn->query('CREATE TABLE dbrevision (branch TEXT, revision varchar(255), masked tinyint not null default 0);');
-            $regex = "/^(test_|masked_|)[a-zA-Z0-9\-]+_[0-9]+\-[0-9]+(_([[:alnum:]\$\-]+)|)(_([a-f0-9v\.]+)|)$/";
-
-            if (preg_match($regex, $dumpFile, $matches)) {
-                list(, $masked, , $matchedBranch, , $matchedRevision) = $matches;
-                $branch = str_replace('$', '/', $matchedBranch);
-                $revision = preg_match('/[0-9v\.]+/', $matchedRevision) ? $matchedRevision : 'latest';
-                $isMasked = 'masked_' === $masked ? 1 : 0;
-
-                $stmt = $conn->prepare('INSERT INTO dbrevision values(?, ?, ?)');
-                $stmt->bind_param(
-                    'ssi',
-                    $branch,
-                    $revision,
-                    $isMasked
-                );
-                $stmt->execute();
-            }
+            $this->createDbRevision($dumpFile);
 
             $this->writeLn('<close>Done</close>');
         } catch (\Exception $e) {
@@ -258,6 +185,160 @@ class QtDatabase
         @unlink($dataFile);
         @unlink($keyFile);
         @unlink($zipFile);
+    }
+
+    public function downloadDump(FtpServer $ftpServer, string $dumpFile): string
+    {
+        $dataFile = tempnam('/tmp', 'dump');
+
+        $this->writeLn('Downloading dump file');
+
+        if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.box'))) {
+            throw new \Exception('Could not download '.$dumpFile);
+        }
+
+        return $dataFile;
+    }
+
+    public function downloadKeyFile(FtpServer $ftpServer, ServerKey $key, string $dumpFile): string
+    {
+        $keyFile = tempnam('/tmp', 'key');
+
+        $this->writeLn('Downloading key file');
+
+        if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
+            throw new \Exception('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
+        }
+
+        return $keyFile;
+    }
+
+    public function decryptKeyFile(ServerKey $key, string $keyFile): string
+    {
+        $this->writeLn('Decrypting key file');
+
+        return $key->decrypt(file_get_contents($keyFile));
+    }
+
+    public function decryptDumpFile(string $dataFile, string $symmetricKey): string
+    {
+        $zipFile = tempnam('/tmp', 'zip');
+
+        $this->writeLn('Decrypting dump file');
+
+        try {
+            $decrypted = \sodium_crypto_secretbox_open(
+                file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+                file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
+                $symmetricKey
+            );
+        } catch (\SodiumException $e) {
+            throw new \Exception('Decryption failed.', 0, $e);
+        }
+
+        if ($decrypted === false) {
+            throw new \Exception('Decryption failed.');
+        }
+
+        file_put_contents($zipFile, $decrypted);
+
+        return $zipFile;
+    }
+
+    public function extractDumpFromArchive(string $archive): string
+    {
+        $sqlFile = tempnam('/tmp', 'sql');
+        $fh = fopen($sqlFile, 'wb');
+
+        $this->writeLn('Extracting zip file');
+
+        $zip = new \ZipArchive();
+        if ($zip->open($archive) && @$zip->statIndex(0) && ($stream = @$zip->getStream($zip->getNameIndex(0)))) {
+            while (($data = @fread($stream, 128 * 1024))) {
+                fwrite($fh, $data);
+            }
+            $zip->close();
+        } else {
+            $stream = @\gzopen($archive, 'rb');
+            while (($data = @gzread($stream, 128 * 1024))) {
+                fwrite($fh, $data);
+            }
+            \gzclose($stream);
+        }
+
+        fclose($fh);
+
+        return $sqlFile;
+    }
+
+    public function createDatabase()
+    {
+        $this->writeLn('Dropping and re-creating database');
+        if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
+            throw new \Exception('Could not drop database.');
+        }
+        if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
+            throw new \Exception('Could not create database.');
+        }
+        try {
+            $this->makeAccessible();
+        } catch (\Exception $exception) {
+            // Fail silently
+        }
+    }
+
+    public function importDatabase(string $sqlFile)
+    {
+        $conn = @mysqli_connect(
+            $this->config['hostspec'],
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['database']
+        );
+
+        @$conn->query('set sql_mode=NO_ENGINE_SUBSTITUTION,innodb_strict_mode=0');
+
+        $this->writeLn('Importing dump');
+
+        $stream = fopen($sqlFile, 'rb');
+
+        $this->statement = '';
+        $this->delimiter = ';';
+
+        while (!feof($stream)) {
+            $this->processSqlLine(trim(fgets($stream), "\t\n\r\0"), $conn);
+        }
+        fclose($stream);
+    }
+
+    public function createDbRevision(string $dumpFile)
+    {
+        $conn = @mysqli_connect(
+            $this->config['hostspec'],
+            $this->config['username'],
+            $this->config['password'],
+            $this->config['database']
+        );
+
+        $conn->query('DROP TABLE IF EXISTS dbrevision;');
+        $conn->query('CREATE TABLE dbrevision (branch TEXT, revision varchar(255), masked tinyint not null default 0);');
+        $regex = "/^(test_|masked_|)[a-zA-Z0-9\-]+_[0-9]+\-[0-9]+(_([[:alnum:]\$\-]+)|)(_([a-f0-9v\.]+)|)$/";
+
+        if (preg_match($regex, $dumpFile, $matches)) {
+            list(, $masked, , $matchedBranch, , $matchedRevision) = $matches;
+            $branch = str_replace('$', '/', $matchedBranch);
+            $revision = preg_match('/[0-9v\.]+/', $matchedRevision) ? $matchedRevision : 'latest';
+            $isMasked = 'masked_' === $masked ? 1 : 0;
+
+            $stmt = $conn->prepare('INSERT INTO dbrevision values(?, ?, ?)');
+            $stmt->bind_param(
+                'ssi',
+                $branch,
+                $revision,
+                $isMasked
+            );
+            $stmt->execute();
+        }
     }
 
     public function killProcess($id)
@@ -339,25 +420,6 @@ class QtDatabase
         }
 
         return $parsedUrl;
-    }
-
-    private function tryGzipDecompression($stream, \mysqli $conn)
-    {
-        while (!\gzeof($stream)) {
-            if (!$rawLine = \gzgets($stream)) {
-                continue;
-            }
-            $this->processSqlLine(\trim($rawLine, "\t\n\r\0"), $conn);
-        }
-        \gzclose($stream);
-    }
-
-    private function tryZipDecompression($stream, \mysqli $conn)
-    {
-        while (!feof($stream)) {
-            $this->processSqlLine(trim(fgets($stream), "\t\n\r\0"), $conn);
-        }
-        fclose($stream);
     }
 
     private function processSqlLine(string $line, \mysqli $conn)
