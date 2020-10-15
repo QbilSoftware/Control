@@ -100,7 +100,9 @@ class ServerKey
     {
         if (!is_file($this->keyFile) || (0 !== $this->expireTime && filemtime($this->keyFile) < time() - 30000)) {
             try {
-                unlink($this->keyFile);
+                if (is_file($this->keyFile)) {
+                    unlink($this->keyFile);
+                }
             } catch (FilesystemException $e) {
             }
             $this->key = openssl_pkey_new([
