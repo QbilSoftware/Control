@@ -68,11 +68,10 @@ class ServerKey
      */
     public function decrypt(string $input): string
     {
-        if (
-            !openssl_private_decrypt($input, $output, $this->getKey(), \OPENSSL_PKCS1_OAEP_PADDING) &&
-            !openssl_private_decrypt($input, $output, $this->getKey())
-        ) {
-            throw new \RuntimeException('Decryption failed.');
+        try {
+            openssl_private_decrypt($input, $output, $this->getKey(), \OPENSSL_PKCS1_OAEP_PADDING);
+        } catch (OpensslException $exception) {
+            openssl_private_decrypt($input, $output, $this->getKey());
         }
 
         return $output;
