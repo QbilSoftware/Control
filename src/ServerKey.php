@@ -2,22 +2,21 @@
 
 namespace Qbil\Control;
 
+use ParagonIE\Halite\Alerts\CannotPerformOperation;
+use ParagonIE\Halite\Alerts\InvalidKey;
+use ParagonIE\Halite\Alerts\InvalidMessage;
+use ParagonIE\Halite\Alerts\InvalidType;
+use ParagonIE\Halite\Asymmetric\Crypto;
+use ParagonIE\Halite\Asymmetric\EncryptionPublicKey;
+use ParagonIE\Halite\Asymmetric\EncryptionSecretKey;
+use ParagonIE\Halite\KeyFactory;
 use Safe\Exceptions\FilesystemException;
-use Safe\Exceptions\OpensslException;
 use function Safe\filemtime;
-use function Safe\unlink;
-use function Safe\openssl_pkey_new;
-use function Safe\openssl_pkey_export_to_file;
-use function Safe\openssl_pkey_get_private;
-use function Safe\file_get_contents;
-use function Safe\openssl_private_decrypt;
+use function time;
 
 class ServerKey
 {
-    /**
-     * @var resource|null
-     */
-    private $key;
+    private ?EncryptionSecretKey $secretKey = null;
 
     private string $keyFile;
 
@@ -30,89 +29,70 @@ class ServerKey
     }
 
     /**
-     * @throws OpensslException
+     * @throws CannotPerformOperation
      * @throws FilesystemException
+     * @throws InvalidKey
      */
-    public function getPublicKey(): string
+    public function getPrivateKey(): EncryptionSecretKey
     {
-        if (false === $details = openssl_pkey_get_details($this->getKey())) {
-            throw new OpensslException('Could not get private key details');
-        }
-
-        return $details['key'];
-    }
-
-    /**
-     * @throws FilesystemException
-     * @throws OpensslException
-     */
-    public function getPrivateKey(): string
-    {
-        $this->createKeyIfNotExists();
-
-        return file_get_contents($this->keyFile);
-    }
-
-    /**
-     * @throws FilesystemException
-     * @throws OpensslException
-     */
-    public function getKeyChecksum(): string
-    {
-        return md5($this->getPublicKey());
-    }
-
-    /**
-     * @throws FilesystemException
-     * @throws OpensslException
-     */
-    public function decrypt(string $input): string
-    {
-        try {
-            openssl_private_decrypt($input, $output, $this->getKey(), \OPENSSL_PKCS1_OAEP_PADDING);
-        } catch (OpensslException $exception) {
-            openssl_private_decrypt($input, $output, $this->getKey());
-        }
-
-        return $output;
-    }
-
-    /**
-     * @return resource
-     * @throws FilesystemException
-     * @throws OpensslException
-     */
-    private function getKey()
-    {
-        if (null === $this->key) {
+        if (null === $this->secretKey) {
             $this->createKeyIfNotExists();
         }
 
-        return $this->key;
+        return $this->secretKey;
+    }
+
+    /**
+     * @throws CannotPerformOperation
+     * @throws FilesystemException
+     * @throws InvalidKey
+     */
+    public function getPublicKey(): EncryptionPublicKey
+    {
+        return $this->getPrivateKey()->derivePublicKey();
+    }
+
+    /**
+     * @throws CannotPerformOperation
+     * @throws FilesystemException
+     * @throws InvalidKey
+     */
+    public function getKeyChecksum(): string
+    {
+        return md5($this->getPublicKey()->getRawKeyMaterial());
+    }
+
+    /**
+     * @throws CannotPerformOperation
+     * @throws FilesystemException
+     * @throws InvalidKey
+     * @throws InvalidMessage
+     * @throws InvalidType
+     */
+    public function decrypt(string $input): string
+    {
+        return Crypto::unseal($input, $this->getPrivateKey())->getString();
+    }
+
+    /**
+     * @throws InvalidKey
+     * @throws CannotPerformOperation|FilesystemException
+     */
+    private function createKeyIfNotExists(): void
+    {
+        if (!is_file($this->keyFile) || $this->hasKeyExpired()) {
+            $encryptionKeyPair = KeyFactory::generateEncryptionKeyPair();
+            KeyFactory::save($encryptionKeyPair, $this->keyFile);
+        }
+
+        $this->secretKey = KeyFactory::loadEncryptionSecretKey($this->keyFile);
     }
 
     /**
      * @throws FilesystemException
-     * @throws OpensslException
      */
-    private function createKeyIfNotExists(): void
+    private function hasKeyExpired(): bool
     {
-        if (!is_file($this->keyFile) || (0 !== $this->expireTime && filemtime($this->keyFile) < time() - 30000)) {
-            try {
-                if (is_file($this->keyFile)) {
-                    unlink($this->keyFile);
-                }
-            } catch (FilesystemException $e) {
-            }
-            $this->key = openssl_pkey_new([
-                'digest_alg' => 'sha512',
-                'private_key_bits' => 4096,
-                'private_key_type' => OPENSSL_KEYTYPE_RSA,
-            ]);
-
-            openssl_pkey_export_to_file($this->key, $this->keyFile);
-        } else {
-            $this->key = openssl_pkey_get_private(file_get_contents($this->keyFile));
-        }
+        return 0 !== $this->expireTime && filemtime($this->keyFile) < time() - 30000;
     }
 }

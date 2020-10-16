@@ -2,6 +2,10 @@
 
 namespace Qbil\Control;
 
+use ParagonIE\Halite\File;
+use ParagonIE\Halite\Symmetric\EncryptionKey;
+use ParagonIE\HiddenString\HiddenString;
+
 class QtDatabase
 {
     private $config;
@@ -82,7 +86,7 @@ class QtDatabase
     {
         try {
             $conn = $this->getAdminConnection();
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $conn = $this->getConnection();
             if (!$conn) {
                 return null;
@@ -111,7 +115,7 @@ class QtDatabase
 
         $result = @$conn->query("GRANT SELECT,EXECUTE ON {$this->config['database']}.* TO `{$this->config['ro-username']}`@`%` identified by '{$conn->real_escape_string($password)}' require ssl");
         if (!$result) {
-            throw new \Exception($conn->error);
+            throw new \RuntimeException($conn->error);
         }
 
         return true;
@@ -150,7 +154,7 @@ class QtDatabase
         );
 
         if (!$result) {
-            throw new \Exception($conn->error);
+            throw new \RuntimeException($conn->error);
         }
 
         return $this->setReadOnlyAccount();
@@ -176,7 +180,7 @@ class QtDatabase
             $this->createDbRevision($dumpFile);
 
             $this->writeLn('<close>Done</close>');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             @unlink($dataFile);
             @unlink($keyFile);
             @unlink($zipFile);
@@ -194,7 +198,7 @@ class QtDatabase
         $this->writeLn('Downloading dump file');
 
         if (!($ftpServer->downloadFile($dataFile, $dumpFile.'.box'))) {
-            throw new \Exception('Could not download '.$dumpFile);
+            throw new \RuntimeException('Could not download '.$dumpFile);
         }
 
         return $dataFile;
@@ -207,7 +211,7 @@ class QtDatabase
         $this->writeLn('Downloading key file');
 
         if (!$ftpServer->downloadFile($keyFile, $dumpFile.'.key.'.$key->getKeyChecksum())) {
-            throw new \Exception('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
+            throw new \RuntimeException('Could not download '.$dumpFile.'.key.'.$key->getKeyChecksum());
         }
 
         return $keyFile;
@@ -220,27 +224,27 @@ class QtDatabase
         return $key->decrypt(file_get_contents($keyFile));
     }
 
+    /**
+     * @throws \ParagonIE\Halite\Alerts\CannotPerformOperation
+     * @throws \ParagonIE\Halite\Alerts\FileAccessDenied
+     * @throws \ParagonIE\Halite\Alerts\FileError
+     * @throws \ParagonIE\Halite\Alerts\FileModified
+     * @throws \ParagonIE\Halite\Alerts\InvalidDigestLength
+     * @throws \ParagonIE\Halite\Alerts\InvalidKey
+     * @throws \ParagonIE\Halite\Alerts\InvalidMessage
+     * @throws \ParagonIE\Halite\Alerts\InvalidType
+     */
     public function decryptDumpFile(string $dataFile, string $symmetricKey): string
     {
         $zipFile = tempnam('/tmp', 'zip');
 
         $this->writeLn('Decrypting dump file');
 
-        try {
-            $decrypted = \sodium_crypto_secretbox_open(
-                file_get_contents($dataFile, false, null, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
-                file_get_contents($dataFile, false, null, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES),
-                $symmetricKey
-            );
-        } catch (\SodiumException $e) {
-            throw new \Exception('Decryption failed.', 0, $e);
-        }
+        $success = File::decrypt($dataFile, $zipFile, new EncryptionKey(new HiddenString($symmetricKey)));
 
-        if ($decrypted === false) {
-            throw new \Exception('Decryption failed.');
+        if (!$success) {
+            throw new \RuntimeException('Decryption failed.');
         }
-
-        file_put_contents($zipFile, $decrypted);
 
         return $zipFile;
     }
@@ -275,14 +279,14 @@ class QtDatabase
     {
         $this->writeLn('Dropping and re-creating database');
         if ($this->doesExist() && !$this->getAdminConnection()->query('DROP DATABASE '.$this->config['database'])) {
-            throw new \Exception('Could not drop database.');
+            throw new \RuntimeException('Could not drop database.');
         }
         if (!$this->getAdminConnection()->query('CREATE DATABASE '.$this->config['database'])) {
-            throw new \Exception('Could not create database.');
+            throw new \RuntimeException('Could not create database.');
         }
         try {
             $this->makeAccessible();
-        } catch (\Exception $exception) {
+        } catch (\Throwable $exception) {
             // Fail silently
         }
     }
@@ -325,7 +329,7 @@ class QtDatabase
         $regex = "/^(test_|masked_|)[a-zA-Z0-9\-]+_[0-9]+\-[0-9]+(_([[:alnum:]\$\-]+)|)(_([a-f0-9v\.]+)|)$/";
 
         if (preg_match($regex, $dumpFile, $matches)) {
-            list(, $masked, , $matchedBranch, , $matchedRevision) = $matches;
+            [, $masked, , $matchedBranch, , $matchedRevision] = $matches;
             $branch = str_replace('$', '/', $matchedBranch);
             $revision = preg_match('/[0-9v\.]+/', $matchedRevision) ? $matchedRevision : 'latest';
             $isMasked = 'masked_' === $masked ? 1 : 0;
@@ -368,7 +372,7 @@ class QtDatabase
             $row = mysqli_fetch_row($result);
 
             return is_dir($row[0]) && is_dir($row[0].'/.snap');
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }
@@ -379,7 +383,7 @@ class QtDatabase
             $conn = $this->getAdminConnection();
 
             return $conn->server_info;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return 'unknown';
         }
     }
@@ -395,7 +399,7 @@ class QtDatabase
     {
         $conn = @mysqli_connect($this->adminConfig['hostspec'], $this->adminConfig['username'], $this->adminConfig['password']);
         if (!$conn) {
-            throw new \Exception('Root access to database unavailable.');
+            throw new \RuntimeException('Root access to database unavailable.');
         }
 
         return $conn;
@@ -439,7 +443,7 @@ class QtDatabase
                 $this->statement = \preg_replace('/ALTER DATABASE `[a-z0-9_]+`/i', 'ALTER DATABASE', $this->statement);
 
                 if (!$conn->query($this->statement)) {
-                    throw new \Exception($conn->error.' ('.$this->statement.')');
+                    throw new \RuntimeException($conn->error.' ('.$this->statement.')');
                 }
 
                 $this->statement = '';
