@@ -11,6 +11,7 @@ use ParagonIE\Halite\Asymmetric\EncryptionPublicKey;
 use ParagonIE\Halite\Asymmetric\EncryptionSecretKey;
 use ParagonIE\Halite\KeyFactory;
 use Safe\Exceptions\FilesystemException;
+use function base64_encode;
 use function Safe\filemtime;
 use function time;
 
@@ -59,7 +60,7 @@ class ServerKey
      */
     public function getKeyChecksum(): string
     {
-        return md5($this->getPublicKey()->getRawKeyMaterial());
+        return md5(base64_encode($this->getPublicKey()->getRawKeyMaterial()));
     }
 
     /**
