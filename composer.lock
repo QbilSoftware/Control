@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "449b18348c1aee2c96dcd9a0e382ea20",
+    "content-hash": "d3e7f52198ebdf574060d64a7abe052f",
     "packages": [
         {
             "name": "ckdarby/php-uptimerobot",
@@ -43,28 +43,32 @@
             ],
             "description": "PHP Wrapper for UptimeRobot.com API",
             "homepage": "https://github.com/ckdarby/PHP-UptimeRobot/",
+            "support": {
+                "issues": "https://github.com/ckdarby/PHP-UptimeRobot/issues",
+                "source": "https://github.com/ckdarby/PHP-UptimeRobot/tree/master"
+            },
             "time": "2018-02-27T14:58:55+00:00"
         },
         {
             "name": "paragonie/constant_time_encoding",
-            "version": "v2.3.0",
+            "version": "v2.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paragonie/constant_time_encoding.git",
-                "reference": "47a1cedd2e4d52688eb8c96469c05ebc8fd28fa2"
+                "reference": "f34c2b11eb9d2c9318e13540a1dbc2a3afbd939c"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paragonie/constant_time_encoding/zipball/47a1cedd2e4d52688eb8c96469c05ebc8fd28fa2",
-                "reference": "47a1cedd2e4d52688eb8c96469c05ebc8fd28fa2",
+                "url": "https://api.github.com/repos/paragonie/constant_time_encoding/zipball/f34c2b11eb9d2c9318e13540a1dbc2a3afbd939c",
+                "reference": "f34c2b11eb9d2c9318e13540a1dbc2a3afbd939c",
                 "shasum": ""
             },
             "require": {
                 "php": "^7|^8"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6|^7",
-                "vimeo/psalm": "^1|^2|^3"
+                "phpunit/phpunit": "^6|^7|^8|^9",
+                "vimeo/psalm": "^1|^2|^3|^4"
             },
             "type": "library",
             "autoload": {
@@ -105,31 +109,36 @@
                 "hex2bin",
                 "rfc4648"
             ],
-            "time": "2019-11-06T19:20:29+00:00"
+            "support": {
+                "email": "info@paragonie.com",
+                "issues": "https://github.com/paragonie/constant_time_encoding/issues",
+                "source": "https://github.com/paragonie/constant_time_encoding"
+            },
+            "time": "2020-12-06T15:14:20+00:00"
         },
         {
             "name": "paragonie/halite",
-            "version": "v4.6.0",
+            "version": "v4.7.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paragonie/halite.git",
-                "reference": "7b96cdcf355fc7d09c58ee602ba22724bc8545d3"
+                "reference": "538a0579e86ac8222973be55d17615a7be8f29cb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paragonie/halite/zipball/7b96cdcf355fc7d09c58ee602ba22724bc8545d3",
-                "reference": "7b96cdcf355fc7d09c58ee602ba22724bc8545d3",
+                "url": "https://api.github.com/repos/paragonie/halite/zipball/538a0579e86ac8222973be55d17615a7be8f29cb",
+                "reference": "538a0579e86ac8222973be55d17615a7be8f29cb",
                 "shasum": ""
             },
             "require": {
                 "paragonie/constant_time_encoding": "^2",
-                "paragonie/hidden-string": "^1",
-                "paragonie/sodium_compat": "^1.11",
-                "php": "^7.2"
+                "paragonie/hidden-string": "^1|^2",
+                "paragonie/sodium_compat": "^1.14",
+                "php": "^7.2|^8"
             },
             "require-dev": {
-                "phpunit/phpunit": "^8",
-                "vimeo/psalm": "^3"
+                "phpunit/phpunit": "^8|^9",
+                "vimeo/psalm": "^3|^4"
             },
             "type": "library",
             "autoload": {
@@ -170,30 +179,35 @@
                 "signatures",
                 "sodium"
             ],
-            "time": "2019-09-12T11:49:55+00:00"
+            "support": {
+                "docs": "https://github.com/paragonie/halite/tree/master/doc",
+                "issues": "https://github.com/paragonie/halite/issues",
+                "source": "https://github.com/paragonie/halite/tree/v4.7.1"
+            },
+            "time": "2020-12-06T15:18:22+00:00"
         },
         {
             "name": "paragonie/hidden-string",
-            "version": "v1.0.0",
+            "version": "v2.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paragonie/hidden-string.git",
-                "reference": "0bbb00be0e33b8e1d48fa79ea35cd42d3091a936"
+                "reference": "151e53d55bfc67dd58087cdf8762dd8177ea7575"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paragonie/hidden-string/zipball/0bbb00be0e33b8e1d48fa79ea35cd42d3091a936",
-                "reference": "0bbb00be0e33b8e1d48fa79ea35cd42d3091a936",
+                "url": "https://api.github.com/repos/paragonie/hidden-string/zipball/151e53d55bfc67dd58087cdf8762dd8177ea7575",
+                "reference": "151e53d55bfc67dd58087cdf8762dd8177ea7575",
                 "shasum": ""
             },
             "require": {
                 "paragonie/constant_time_encoding": "^2",
                 "paragonie/sodium_compat": "^1.6",
-                "php": "^7"
+                "php": "^7.4|^8"
             },
             "require-dev": {
-                "phpunit/phpunit": "^6|^7",
-                "vimeo/psalm": "^1"
+                "phpunit/phpunit": "^6|^7|^8|^9",
+                "vimeo/psalm": "^3|^4"
             },
             "type": "library",
             "autoload": {
@@ -219,7 +233,11 @@
                 "stack trace",
                 "string"
             ],
-            "time": "2018-05-07T20:28:06+00:00"
+            "support": {
+                "issues": "https://github.com/paragonie/hidden-string/issues",
+                "source": "https://github.com/paragonie/hidden-string/tree/v2.0.0"
+            },
+            "time": "2020-12-06T15:07:44+00:00"
         },
         {
             "name": "paragonie/random_compat",
@@ -264,20 +282,25 @@
                 "pseudorandom",
                 "random"
             ],
+            "support": {
+                "email": "info@paragonie.com",
+                "issues": "https://github.com/paragonie/random_compat/issues",
+                "source": "https://github.com/paragonie/random_compat"
+            },
             "time": "2020-10-15T08:29:30+00:00"
         },
         {
             "name": "paragonie/sodium_compat",
-            "version": "v1.13.0",
+            "version": "v1.14.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/paragonie/sodium_compat.git",
-                "reference": "bbade402cbe84c69b718120911506a3aa2bae653"
+                "reference": "a1cfe0b21faf9c0b61ac0c6188c4af7fd6fd0db3"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/paragonie/sodium_compat/zipball/bbade402cbe84c69b718120911506a3aa2bae653",
-                "reference": "bbade402cbe84c69b718120911506a3aa2bae653",
+                "url": "https://api.github.com/repos/paragonie/sodium_compat/zipball/a1cfe0b21faf9c0b61ac0c6188c4af7fd6fd0db3",
+                "reference": "a1cfe0b21faf9c0b61ac0c6188c4af7fd6fd0db3",
                 "shasum": ""
             },
             "require": {
@@ -285,7 +308,7 @@
                 "php": "^5.2.4|^5.3|^5.4|^5.5|^5.6|^7|^8"
             },
             "require-dev": {
-                "phpunit/phpunit": "^3|^4|^5|^6|^7"
+                "phpunit/phpunit": "^3|^4|^5|^6|^7|^8|^9"
             },
             "suggest": {
                 "ext-libsodium": "PHP < 7.0: Better performance, password hashing (Argon2i), secure memory management (memzero), and better security.",
@@ -346,31 +369,114 @@
                 "secret-key cryptography",
                 "side-channel resistant"
             ],
-            "time": "2020-03-20T21:48:09+00:00"
+            "support": {
+                "issues": "https://github.com/paragonie/sodium_compat/issues",
+                "source": "https://github.com/paragonie/sodium_compat/tree/v1.14.0"
+            },
+            "time": "2020-12-03T16:26:19+00:00"
         },
         {
-            "name": "symfony/process",
-            "version": "v4.4.15",
+            "name": "symfony/polyfill-php80",
+            "version": "v1.20.0",
             "source": {
                 "type": "git",
-                "url": "https://github.com/symfony/process.git",
-                "reference": "9b887acc522935f77555ae8813495958c7771ba7"
+                "url": "https://github.com/symfony/polyfill-php80.git",
+                "reference": "e70aa8b064c5b72d3df2abd5ab1e90464ad009de"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/symfony/process/zipball/9b887acc522935f77555ae8813495958c7771ba7",
-                "reference": "9b887acc522935f77555ae8813495958c7771ba7",
+                "url": "https://api.github.com/repos/symfony/polyfill-php80/zipball/e70aa8b064c5b72d3df2abd5ab1e90464ad009de",
+                "reference": "e70aa8b064c5b72d3df2abd5ab1e90464ad009de",
                 "shasum": ""
             },
             "require": {
-                "php": ">=7.1.3"
+                "php": ">=7.1"
             },
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "4.4-dev"
+                    "dev-main": "1.20-dev"
+                },
+                "thanks": {
+                    "name": "symfony/polyfill",
+                    "url": "https://github.com/symfony/polyfill"
                 }
             },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\Polyfill\\Php80\\": ""
+                },
+                "files": [
+                    "bootstrap.php"
+                ],
+                "classmap": [
+                    "Resources/stubs"
+                ]
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Ion Bazan",
+                    "email": "ion.bazan@gmail.com"
+                },
+                {
+                    "name": "Nicolas Grekas",
+                    "email": "p@tchwork.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Symfony polyfill backporting some PHP 8.0+ features to lower PHP versions",
+            "homepage": "https://symfony.com",
+            "keywords": [
+                "compatibility",
+                "polyfill",
+                "portable",
+                "shim"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/polyfill-php80/tree/v1.20.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2020-10-23T14:02:19+00:00"
+        },
+        {
+            "name": "symfony/process",
+            "version": "v5.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/process.git",
+                "reference": "bd8815b8b6705298beaa384f04fabd459c10bedd"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/process/zipball/bd8815b8b6705298beaa384f04fabd459c10bedd",
+                "reference": "bd8815b8b6705298beaa384f04fabd459c10bedd",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.2.5",
+                "symfony/polyfill-php80": "^1.15"
+            },
+            "type": "library",
             "autoload": {
                 "psr-4": {
                     "Symfony\\Component\\Process\\": ""
@@ -395,6 +501,9 @@
             ],
             "description": "Symfony Process Component",
             "homepage": "https://symfony.com",
+            "support": {
+                "source": "https://github.com/symfony/process/tree/v5.2.1"
+            },
             "funding": [
                 {
                     "url": "https://symfony.com/sponsor",
@@ -409,20 +518,20 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2020-09-02T16:08:58+00:00"
+            "time": "2020-12-08T17:03:37+00:00"
         },
         {
             "name": "thecodingmachine/safe",
-            "version": "v1.3.1",
+            "version": "v1.3.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/thecodingmachine/safe.git",
-                "reference": "a6b795aeb367c90cc6ed88dadb4cdcac436377c2"
+                "reference": "a8ab0876305a4cdaef31b2350fcb9811b5608dbc"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/thecodingmachine/safe/zipball/a6b795aeb367c90cc6ed88dadb4cdcac436377c2",
-                "reference": "a6b795aeb367c90cc6ed88dadb4cdcac436377c2",
+                "url": "https://api.github.com/repos/thecodingmachine/safe/zipball/a8ab0876305a4cdaef31b2350fcb9811b5608dbc",
+                "reference": "a8ab0876305a4cdaef31b2350fcb9811b5608dbc",
                 "shasum": ""
             },
             "require": {
@@ -544,7 +653,11 @@
                 "MIT"
             ],
             "description": "PHP core functions that throw exceptions instead of returning FALSE on error",
-            "time": "2020-10-08T08:40:29+00:00"
+            "support": {
+                "issues": "https://github.com/thecodingmachine/safe/issues",
+                "source": "https://github.com/thecodingmachine/safe/tree/v1.3.3"
+            },
+            "time": "2020-10-28T17:51:34+00:00"
         }
     ],
     "packages-dev": [],
@@ -562,5 +675,5 @@
         "ext-zlib": "*"
     },
     "platform-dev": [],
-    "plugin-api-version": "1.1.0"
+    "plugin-api-version": "2.0.0"
 }

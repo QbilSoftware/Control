@@ -22,7 +22,7 @@
         "ext-posix": "*",
         "ext-sodium": "*",
         "ext-zlib": "*",
-        "symfony/process": "^4.3",
+        "symfony/process": "^4.4 || ^5.2",
         "ckdarby/php-uptimerobot": "^0.2.0",
         "thecodingmachine/safe": "^1.3",
         "paragonie/halite": "^4.6"
