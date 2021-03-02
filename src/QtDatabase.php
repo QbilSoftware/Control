@@ -254,20 +254,22 @@ class QtDatabase
         $sqlFile = tempnam('/tmp', 'sql');
         $fh = fopen($sqlFile, 'wb');
 
-        $this->writeLn('Extracting zip file');
+        $this->writeLn('Extracting archive');
 
-        $zip = new \ZipArchive();
-        if ($zip->open($archive) && @$zip->statIndex(0) && ($stream = @$zip->getStream($zip->getNameIndex(0)))) {
-            while (($data = @fread($stream, 128 * 1024))) {
-                fwrite($fh, $data);
-            }
-            $zip->close();
-        } else {
-            $stream = @\gzopen($archive, 'rb');
+        if (false !== $stream = @\gzopen($archive, 'rb')) {
             while (($data = @gzread($stream, 128 * 1024))) {
                 fwrite($fh, $data);
             }
             \gzclose($stream);
+        } else {
+            $zip = new \ZipArchive();
+            $zip->open($archive);
+            @$zip->statIndex(0);
+            $stream = @$zip->getStream($zip->getNameIndex(0));
+            while (($data = @fread($stream, 128 * 1024))) {
+                fwrite($fh, $data);
+            }
+            $zip->close();
         }
 
         fclose($fh);
